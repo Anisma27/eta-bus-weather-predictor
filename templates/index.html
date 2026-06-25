@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pan India ETA Predictor</title>
+
+<style>
+
+:root{
+    --ink:#1c2b2d;
+    --paper:#f6f3ec;
+    --card:#ffffff;
+    --line:#dcd6c7;
+    --transit-amber:#d97b29;
+    --transit-green:#2f6e5c;
+    --muted:#6b6457;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    margin:0;
+    padding:40px 20px;
+    display:flex;
+    justify-content:center;
+    transition:background 1.2s ease;
+}
+
+/* Weather-driven backgrounds, applied as a class on <body> */
+body.weather-clear{
+    background:linear-gradient(160deg, #fdf3d8 0%, #f7dfa0 45%, #f0c878 100%);
+}
+
+body.weather-clouds{
+    background:linear-gradient(160deg, #e7e9ea 0%, #cfd4d6 50%, #b9c0c3 100%);
+}
+
+body.weather-rain,
+body.weather-drizzle{
+    background:linear-gradient(160deg, #aab9c4 0%, #788e9c 50%, #4f6573 100%);
+}
+
+body.weather-thunderstorm{
+    background:linear-gradient(160deg, #5b6270 0%, #3a3f4a 50%, #232730 100%);
+}
+
+body.weather-snow{
+    background:linear-gradient(160deg, #fbfdff 0%, #e6eef5 50%, #d3e1ec 100%);
+}
+
+body.weather-mist,
+body.weather-fog,
+body.weather-haze,
+body.weather-smoke,
+body.weather-dust,
+body.weather-sand{
+    background:linear-gradient(160deg, #e3e0d6 0%, #cfcabb 50%, #b8b29e 100%);
+}
+
+.card{
+    width:100%;
+    max-width:520px;
+    background:var(--card);
+    padding:32px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    box-shadow:0 2px 18px rgba(0,0,0,0.06);
+}
+
+h2{
+    margin:0 0 28px;
+    font-size:1.5rem;
+    letter-spacing:-0.01em;
+    text-align:center;
+}
+
+label{
+    display:block;
+    font-size:0.8rem;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--muted);
+    margin-bottom:6px;
+}
+
+.field{
+    margin-bottom:18px;
+}
+
+.two-col{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+}
+
+.combobox{
+    position:relative;
+}
+
+.combobox input[type="text"]{
+    width:100%;
+    padding:11px 14px;
+    font-size:0.95rem;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--card);
+    color:var(--ink);
+    outline:none;
+    transition:border-color 0.15s ease;
+}
+
+.combobox input[type="text"]:focus{
+    border-color:var(--transit-green);
+}
+
+.combobox input[type="text"]::placeholder{
+    color:var(--muted);
+}
+
+.combobox input[type="text"]:disabled{
+    background:#f3f1ea;
+    color:var(--muted);
+    cursor:not-allowed;
+}
+
+.combobox-list{
+    position:absolute;
+    top:calc(100% + 4px);
+    left:0;
+    right:0;
+    max-height:220px;
+    overflow-y:auto;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.10);
+    z-index:20;
+    display:none;
+    list-style:none;
+    margin:0;
+    padding:4px;
+}
+
+.combobox-list.open{
+    display:block;
+}
+
+.combobox-list li{
+    padding:9px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:0.92rem;
+}
+
+.combobox-list li:hover,
+.combobox-list li.active{
+    background:#eef3ef;
+    color:var(--transit-green);
+}
+
+.combobox-list li.empty{
+    color:var(--muted);
+    cursor:default;
+}
+
+.combobox-list li.empty:hover{
+    background:transparent;
+}
+
+select#traffic{
+    width:100%;
+    padding:11px 14px;
+    font-size:0.95rem;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--card);
+    color:var(--ink);
+}
+
+.route-summary{
+    text-align:center;
+    font-size:0.85rem;
+    color:var(--muted);
+    margin:2px 0 18px;
+    min-height:1.2em;
+}
+
+.weather-line{
+    text-align:center;
+    font-size:0.9rem;
+    color:var(--muted);
+    margin:6px 0 22px;
+    min-height:1.2em;
+}
+
+button{
+    width:100%;
+    padding:12px;
+    font-size:0.95rem;
+    font-weight:600;
+    color:#fff;
+    background:var(--transit-green);
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background 0.15s ease;
+}
+
+button:hover{
+    background:#26594a;
+}
+
+button:disabled{
+    background:#a9b8b1;
+    cursor:not-allowed;
+}
+
+.result{
+    margin-top:24px;
+    background:#f1f4ee;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+}
+
+.result h3{
+    margin:0 0 12px;
+    font-size:1.05rem;
+    text-align:center;
+    color:var(--transit-green);
+}
+
+.result p{
+    margin:6px 0;
+    font-size:0.92rem;
+}
+
+.result b{
+    color:var(--muted);
+    font-weight:600;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>🚍 Pan India ETA Predictor</h2>
+
+<form method="POST" id="eta-form">
+
+    <div class="field two-col">
+
+        <div>
+            <label for="from-search">From</label>
+            <div class="combobox">
+                <input
+                    type="text"
+                    id="from-search"
+                    placeholder="Starting city…"
+                    autocomplete="off"
+                >
+                <ul class="combobox-list" id="from-list"></ul>
+            </div>
+        </div>
+
+        <div>
+            <label for="to-search">To</label>
+            <div class="combobox">
+                <input
+                    type="text"
+                    id="to-search"
+                    placeholder="Pick a starting city first"
+                    autocomplete="off"
+                    disabled
+                >
+                <ul class="combobox-list" id="to-list"></ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- this hidden input is what Flask actually reads as request.form["route"] -->
+    <input type="hidden" id="route" name="route" required>
+
+    <p class="route-summary" id="route-summary"></p>
+
+    <div class="field">
+        <label for="traffic">Traffic</label>
+        <select id="traffic" name="traffic">
+            <option>Low</option>
+            <option>Medium</option>
+            <option>High</option>
+        </select>
+    </div>
+
+    <p class="weather-line" id="weather"></p>
+
+    <button type="submit" id="submit-btn" disabled>Predict ETA</button>
+
+</form>
+
+{% if result %}
+
+<div class="result">
+    <h3>Prediction Result</h3>
+    <p><b>Route:</b> {{result.route}}</p>
+    <p><b>Traffic:</b> {{result.traffic}}</p>
+    <p><b>ETA:</b> {{result.eta_formatted}}</p>
+    <p><b>Arrival:</b> {{result.arrival}}</p>
+    <p><b>Weather:</b> {{result.weather}}</p>
+</div>
+
+{% endif %}
+
+</div>
+
+<script>
+
+// Each entry: { from_city, to_city, route }
+const ROUTE_PAIRS = {{ route_pairs | tojson }};
+
+const fromInput  = document.getElementById("from-search");
+const toInput    = document.getElementById("to-search");
+const fromListEl = document.getElementById("from-list");
+const toListEl   = document.getElementById("to-list");
+const hiddenInput = document.getElementById("route");
+const summaryEl  = document.getElementById("route-summary");
+const weatherEl  = document.getElementById("weather");
+const submitBtn  = document.getElementById("submit-btn");
+
+let selectedFrom = null;
+let selectedTo = null;
+
+let fromActiveIndex = -1;
+let fromMatches = [];
+
+let toActiveIndex = -1;
+let toMatches = [];
+
+// All unique "from" cities, sorted
+const ALL_FROM_CITIES = [...new Set(ROUTE_PAIRS.map(p => p.from_city))].sort();
+
+function citiesToCities(fromCity){
+    // All "to" cities reachable from a given "from" city
+    return [...new Set(
+        ROUTE_PAIRS
+            .filter(p => p.from_city === fromCity)
+            .map(p => p.to_city)
+    )].sort();
+}
+
+function renderGenericList(listEl, matches, emptyText){
+    if(matches.length === 0){
+        listEl.innerHTML = `<li class="empty">${emptyText}</li>`;
+        listEl.classList.add("open");
+        return;
+    }
+
+    listEl.innerHTML = matches
+        .map((c, i) => `<li data-index="${i}">${c}</li>`)
+        .join("");
+
+    listEl.classList.add("open");
+}
+
+function closeList(listEl){
+    listEl.classList.remove("open");
+}
+
+function updateRouteState(){
+    if(selectedFrom && selectedTo){
+        const match = ROUTE_PAIRS.find(
+            p => p.from_city === selectedFrom && p.to_city === selectedTo
+        );
+
+        if(match){
+            hiddenInput.value = match.route;
+            summaryEl.textContent = match.route;
+            submitBtn.disabled = false;
+            loadWeather(match.route);
+            return;
+        }
+    }
+
+    hiddenInput.value = "";
+    summaryEl.textContent = "";
+    submitBtn.disabled = true;
+    weatherEl.textContent = "";
+}
+
+// ---- FROM box ----
+
+fromInput.addEventListener("input", () => {
+    selectedFrom = null;
+    selectedTo = null;
+    toInput.value = "";
+    toInput.disabled = true;
+    toInput.placeholder = "Pick a starting city first";
+    updateRouteState();
+
+    const q = fromInput.value.trim().toLowerCase();
+    fromMatches = q.length === 0
+        ? ALL_FROM_CITIES
+        : ALL_FROM_CITIES.filter(c => c.toLowerCase().includes(q));
+    fromActiveIndex = -1;
+    renderGenericList(fromListEl, fromMatches, "No matching cities");
+});
+
+fromInput.addEventListener("focus", () => {
+    const q = fromInput.value.trim().toLowerCase();
+    fromMatches = q.length === 0
+        ? ALL_FROM_CITIES
+        : ALL_FROM_CITIES.filter(c => c.toLowerCase().includes(q));
+    fromActiveIndex = -1;
+    renderGenericList(fromListEl, fromMatches, "No matching cities");
+});
+
+fromInput.addEventListener("keydown", (e) => {
+    const items = fromListEl.querySelectorAll("li:not(.empty)");
+
+    if(e.key === "ArrowDown"){
+        e.preventDefault();
+        if(items.length === 0) return;
+        fromActiveIndex = (fromActiveIndex + 1) % items.length;
+        items.forEach(li => li.classList.remove("active"));
+        items[fromActiveIndex].classList.add("active");
+        items[fromActiveIndex].scrollIntoView({ block: "nearest" });
+    }
+
+    if(e.key === "ArrowUp"){
+        e.preventDefault();
+        if(items.length === 0) return;
+        fromActiveIndex = (fromActiveIndex - 1 + items.length) % items.length;
+        items.forEach(li => li.classList.remove("active"));
+        items[fromActiveIndex].classList.add("active");
+        items[fromActiveIndex].scrollIntoView({ block: "nearest" });
+    }
+
+    if(e.key === "Enter"){
+        e.preventDefault();
+        if(fromActiveIndex >= 0 && fromMatches[fromActiveIndex]){
+            selectFromCity(fromMatches[fromActiveIndex]);
+        } else if(fromMatches.length === 1){
+            selectFromCity(fromMatches[0]);
+        }
+    }
+
+    if(e.key === "Escape"){
+        closeList(fromListEl);
+    }
+});
+
+fromListEl.addEventListener("click", (e) => {
+    const li = e.target.closest("li[data-index]");
+    if(!li) return;
+    const idx = parseInt(li.dataset.index, 10);
+    selectFromCity(fromMatches[idx]);
+});
+
+function selectFromCity(city){
+    selectedFrom = city;
+    selectedTo = null;
+    fromInput.value = city;
+    closeList(fromListEl);
+
+    toInput.disabled = false;
+    toInput.value = "";
+    toInput.placeholder = "Destination city…";
+    toInput.focus();
+
+    updateRouteState();
+}
+
+// ---- TO box ----
+
+toInput.addEventListener("input", () => {
+    if(!selectedFrom) return;
+
+    selectedTo = null;
+    updateRouteState();
+
+    const options = citiesToCities(selectedFrom);
+    const q = toInput.value.trim().toLowerCase();
+    toMatches = q.length === 0
+        ? options
+        : options.filter(c => c.toLowerCase().includes(q));
+    toActiveIndex = -1;
+    renderGenericList(toListEl, toMatches, "No matching destinations");
+});
+
+toInput.addEventListener("focus", () => {
+    if(!selectedFrom) return;
+
+    const options = citiesToCities(selectedFrom);
+    const q = toInput.value.trim().toLowerCase();
+    toMatches = q.length === 0
+        ? options
+        : options.filter(c => c.toLowerCase().includes(q));
+    toActiveIndex = -1;
+    renderGenericList(toListEl, toMatches, "No matching destinations");
+});
+
+toInput.addEventListener("keydown", (e) => {
+    const items = toListEl.querySelectorAll("li:not(.empty)");
+
+    if(e.key === "ArrowDown"){
+        e.preventDefault();
+        if(items.length === 0) return;
+        toActiveIndex = (toActiveIndex + 1) % items.length;
+        items.forEach(li => li.classList.remove("active"));
+        items[toActiveIndex].classList.add("active");
+        items[toActiveIndex].scrollIntoView({ block: "nearest" });
+    }
+
+    if(e.key === "ArrowUp"){
+        e.preventDefault();
+        if(items.length === 0) return;
+        toActiveIndex = (toActiveIndex - 1 + items.length) % items.length;
+        items.forEach(li => li.classList.remove("active"));
+        items[toActiveIndex].classList.add("active");
+        items[toActiveIndex].scrollIntoView({ block: "nearest" });
+    }
+
+    if(e.key === "Enter"){
+        e.preventDefault();
+        if(toActiveIndex >= 0 && toMatches[toActiveIndex]){
+            selectToCity(toMatches[toActiveIndex]);
+        } else if(toMatches.length === 1){
+            selectToCity(toMatches[0]);
+        }
+    }
+
+    if(e.key === "Escape"){
+        closeList(toListEl);
+    }
+});
+
+toListEl.addEventListener("click", (e) => {
+    const li = e.target.closest("li[data-index]");
+    if(!li) return;
+    const idx = parseInt(li.dataset.index, 10);
+    selectToCity(toMatches[idx]);
+});
+
+function selectToCity(city){
+    selectedTo = city;
+    toInput.value = city;
+    closeList(toListEl);
+    updateRouteState();
+}
+
+document.addEventListener("click", (e) => {
+    if(!e.target.closest("#from-search") && !e.target.closest("#from-list")){
+        closeList(fromListEl);
+    }
+    if(!e.target.closest("#to-search") && !e.target.closest("#to-list")){
+        closeList(toListEl);
+    }
+});
+
+function applyWeatherBackground(weatherString){
+    // weatherString looks like "Rain (24.5°C)" or "Weather Unavailable"
+    // Extract just the leading condition word(s) before the parenthesis.
+    const condition = weatherString.split("(")[0].trim().toLowerCase();
+
+    const knownConditions = [
+        "clear", "clouds", "rain", "drizzle", "thunderstorm",
+        "snow", "mist", "fog", "haze", "smoke", "dust", "sand"
+    ];
+
+    document.body.className = document.body.className
+        .split(" ")
+        .filter(c => !c.startsWith("weather-"))
+        .join(" ");
+
+    const match = knownConditions.find(c => condition.includes(c));
+    if(match){
+        document.body.classList.add("weather-" + match);
+    }
+}
+
+function loadWeather(route){
+    if(!route) return;
+
+    weatherEl.textContent = "Loading weather…";
+
+    fetch("/get_weather?route=" + encodeURIComponent(route))
+        .then(res => res.json())
+        .then(data => {
+            weatherEl.textContent = "Weather: " + data.weather;
+            applyWeatherBackground(data.weather);
+        })
+        .catch(() => {
+            weatherEl.textContent = "Weather: Weather Unavailable";
+        });
+}
+
+document.getElementById("eta-form").addEventListener("submit", (e) => {
+    if(!hiddenInput.value){
+        e.preventDefault();
+        alert("Please select both a starting city and a destination.");
+    }
+});
+
+// If the page loaded with a prediction result already rendered
+// (e.g. after a form submit), apply the matching background immediately.
+{% if result %}
+applyWeatherBackground({{ result.weather | tojson }});
+{% endif %}
+
+</script>
+
+</body>
+
+</html>
